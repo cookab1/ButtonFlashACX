@@ -111,6 +111,6 @@ void flashThread() {
 		PORTK |= 0x0f;  //turn lights on
 		x_delay(200);	
 		PORTK &= 0xf0;  //turn lights off
-		x_delay(200);	
+		x_delay(1000);	
 	}
 }
