@@ -9,10 +9,12 @@
 #include "acx.h"
 #include "acxserial.h"
 
-#define LISTENER 0
-#define OFF 0
-#define ROTATE 1
-#define FLASH 2
+#define LISTENER 1
+#define LIGHTS 2
+
+#define OFF 1
+#define ROTATE 2
+#define FLASH 3
 
 void buttonListener();
 void rotateThread();
@@ -22,7 +24,9 @@ void Serial_puts(uint8_t, char *);
 
 int stateTable[2][3] = {{ROTATE,OFF,ROTATE},
 						{FLASH,FLASH,OFF}};
-volatile int state = OFF;
+int buttonState = 0x3;
+volatile int state = ROTATE;
+volatile int changed = 1;
 
 int main(void)
 {
@@ -33,56 +37,71 @@ int main(void)
 	
 	// after calling x_init(), the running thread is "thread 0"
 	x_init();
-	x_new(LISTENER, buttonListener, true);
-	x_new(ROTATE, rotateThread, true);
-	x_new(FLASH, flashThread, true);
+	x_new(1, buttonListener, true);
 	
 	// We are thread 0 now
-	DDRB = 0x80;
+	//x_suspend(ROTATE);
+	//x_suspend(FLASH);
+	DDRB |= 0x80;
 	
-	/* Replace with your application code */
 	while (1)
 	{	
-		switch(state){
-			case OFF:
-				x_suspend(ROTATE);
-				x_suspend(FLASH);
+		if(changed) {
+			switch(state){
+				case OFF:
+				x_suspend(LIGHTS);
 				break;
 			case ROTATE:
-				x_suspend(FLASH);
-				x_resume(ROTATE);
+				x_new(LIGHTS, rotateThread, true);
 				break;
 			case FLASH:
-				x_suspend(ROTATE);
-				x_resume(FLASH);
+				x_new(LIGHTS, flashThread, true);
 				break;
+			}
 		}
+		changed = 0;
+		x_yield();
 	}
 }
 
 void buttonListener() {
-	int button;
+	DDRF &= 0x00;
+	PORTF |= 0x03;
+	
 	while(1)
 	{
 		// run thread main
 		//listen for button press
-		   //while(button not released);
-		while(((PINF & 1) != 0) || ((PINF & 2) != 0));
-		button = (PINF & 1) == 0 ? 0 : 1;
-		
-		if(button) {
-			while((PINF & 2) != 1);
-			//button 2 released
-		} else {
-			while((PINF & 1) != 1);
-			//button 1 released
+		if((PINF & 3) != buttonState){
+			switch (buttonState) {
+				case 0: //both buttons pressed
+					buttonState = 0;
+					break;
+				case 1:
+					if((PINF & 1) == 0) // both pressed now
+						buttonState = 0;
+					else {
+						state = stateTable[1][state];
+						changed = 1;
+						buttonState = 3;
+					}
+					break;
+				case 2:
+					state = stateTable[0][state];
+					changed = 1;
+					buttonState = 2;
+					break;
+				case 3: //both buttons released		
+					break;
+			}
+			buttonState = (PINF & 3);
 		}
-		state = stateTable[button][state];
+		x_delay(5);
 	}
 }
 
 void rotateThread() {
-	DDRK |= 0x02;
+	DDRK |= 0x0f;
 	while(1)
 	{		
 		// run thread main
@@ -104,13 +123,13 @@ void rotateThread() {
 	}
 }
 void flashThread() {
-	DDRK |= 0x04;
+	DDRK |= 0x0f;
 	while(1)
 	{		
 		// run thread main
 		PORTK |= 0x0f;  //turn lights on
 		x_delay(200);	
-		PORTK &= 0xf0;  //turn lights off
+		PORTK &= 0x00;  //turn lights off
 		x_delay(1000);	
 	}
 }
