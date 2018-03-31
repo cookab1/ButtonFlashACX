@@ -24,8 +24,9 @@ void Serial_puts(uint8_t, char *);
 
 int stateTable[2][3] = {{ROTATE,OFF,ROTATE},
 						{FLASH,FLASH,OFF}};
-int buttonState = 0x3;
-volatile int state = ROTATE;
+							
+volatile int buttonState = 0x3;
+volatile int state = OFF;
 volatile int changed = 1;
 
 int main(void)
@@ -46,10 +47,22 @@ int main(void)
 	
 	while (1)
 	{	
+		/*
+		x_new(LIGHTS, rotateThread, true);
+		x_delay(4000);
+		x_new(LIGHTS, flashThread, true);
+		x_delay(4000);
+		x_disable(LIGHTS);
+		x_delay(2000);
+		x_new(LIGHTS, flashThread, true);
+		x_delay(4000);
+		
+		
+		/*
 		if(changed) {
 			switch(state){
 				case OFF:
-				x_suspend(LIGHTS);
+				x_disable(LIGHTS);
 				break;
 			case ROTATE:
 				x_new(LIGHTS, rotateThread, true);
@@ -58,21 +71,26 @@ int main(void)
 				x_new(LIGHTS, flashThread, true);
 				break;
 			}
+			changed = 0;
 		}
-		changed = 0;
-		x_yield();
+		x_delay(5);
+		*/
 	}
 }
 
 void buttonListener() {
 	DDRF &= 0x00;
-	PORTF |= 0x03;
+	PORTF = 0x03;
 	
 	while(1)
 	{
+		state = stateTable[1][state];
+		changed = 1;
+		x_delay(2000);
 		// run thread main
 		//listen for button press
-		if((PINF & 3) != buttonState){
+		if((PINF & 3) != buttonState) {
+			/*
 			switch (buttonState) {
 				case 0: //both buttons pressed
 					buttonState = 0;
@@ -93,7 +111,8 @@ void buttonListener() {
 					break;
 				case 3: //both buttons released		
 					break;
-			}
+		}
+		*/
 			buttonState = (PINF & 3);
 		}
 		x_delay(5);
