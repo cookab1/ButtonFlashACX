@@ -19,6 +19,7 @@
 void buttonListener();
 void rotateThread();
 void flashThread();
+void turnOff();
 
 void Serial_puts(uint8_t, char *);
 
@@ -43,38 +44,26 @@ int main(void)
 	// We are thread 0 now
 	//x_suspend(ROTATE);
 	//x_suspend(FLASH);
-	DDRB |= 0x80;
+	//DDRB |= 0x80;
 	
 	while (1)
-	{	
-		/*
-		x_new(LIGHTS, rotateThread, true);
-		x_delay(4000);
-		x_new(LIGHTS, flashThread, true);
-		x_delay(4000);
-		x_disable(LIGHTS);
-		x_delay(2000);
-		x_new(LIGHTS, flashThread, true);
-		x_delay(4000);
-		
-		
-		/*
+	{
 		if(changed) {
 			switch(state){
 				case OFF:
-				x_disable(LIGHTS);
-				break;
-			case ROTATE:
-				x_new(LIGHTS, rotateThread, true);
-				break;
-			case FLASH:
-				x_new(LIGHTS, flashThread, true);
-				break;
+					x_disable(LIGHTS);
+					turnOff();
+					break;
+				case ROTATE:
+					x_new(LIGHTS, rotateThread, true);
+					break;
+				case FLASH:
+					x_new(LIGHTS, flashThread, true);
+					break;
 			}
 			changed = 0;
 		}
 		x_delay(5);
-		*/
 	}
 }
 
@@ -82,15 +71,27 @@ void buttonListener() {
 	DDRF &= 0x00;
 	PORTF = 0x03;
 	
+	DDRK |= 0x01;
 	while(1)
 	{
+		if((PINF & 3) != 3) {
+			state = stateTable[1][state];
+			changed = 1;
+		}
+		else {
+			state = OFF;
+			changed = 1;
+		}
+		x_delay(5);
+		
+		/*
 		state = stateTable[1][state];
 		changed = 1;
 		x_delay(2000);
 		// run thread main
 		//listen for button press
 		if((PINF & 3) != buttonState) {
-			/*
+			
 			switch (buttonState) {
 				case 0: //both buttons pressed
 					buttonState = 0;
@@ -112,11 +113,15 @@ void buttonListener() {
 				case 3: //both buttons released		
 					break;
 		}
-		*/
 			buttonState = (PINF & 3);
-		}
-		x_delay(5);
 	}
+		x_delay(5);
+		*/
+	}
+}
+
+void turnOff() {
+		PORTK = 0;
 }
 
 void rotateThread() {
