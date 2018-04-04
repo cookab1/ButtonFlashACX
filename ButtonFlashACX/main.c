@@ -12,9 +12,11 @@
 #define LISTENER 1
 #define LIGHTS 2
 
-#define OFF 1
-#define ROTATE 2
-#define FLASH 3
+#define OFF 0
+#define ROTATE 1
+#define FLASH 2
+
+#define ERROR 3
 
 void buttonListener();
 void rotateThread();
@@ -25,6 +27,11 @@ void Serial_puts(uint8_t, char *);
 
 int stateTable[2][3] = {{ROTATE,OFF,ROTATE},
 						{FLASH,FLASH,OFF}};
+							
+int isRelease[4][4] = {{0, 1, 2, 0}, 
+					   {0, 0, 0, 2},
+					   {0, 0, 0, 1},
+					   {0, 0, 0, 0}};
 							
 volatile int buttonState = 0x3;
 volatile int state = OFF;
@@ -40,11 +47,6 @@ int main(void)
 	// after calling x_init(), the running thread is "thread 0"
 	x_init();
 	x_new(1, buttonListener, true);
-	
-	// We are thread 0 now
-	//x_suspend(ROTATE);
-	//x_suspend(FLASH);
-	//DDRB |= 0x80;
 	
 	while (1)
 	{
@@ -71,52 +73,20 @@ void buttonListener() {
 	DDRF &= 0x00;
 	PORTF = 0x03;
 	
-	DDRK |= 0x01;
+	DDRB |= 0x80;
+	int button;
 	while(1)
 	{
-		if((PINF & 3) != 3) {
-			state = stateTable[1][state];
-			changed = 1;
-		}
-		else {
-			state = OFF;
-			changed = 1;
-		}
-		x_delay(5);
-		
-		/*
-		state = stateTable[1][state];
-		changed = 1;
-		x_delay(2000);
-		// run thread main
-		//listen for button press
-		if((PINF & 3) != buttonState) {
+		int current = PINF & 3;
+		if(current != buttonState) {
+			if(button = isRelease[buttonState][current]) {
+				state = stateTable[button - 1][state];
+				changed = 1;
+			}
+			buttonState = current;
 			
-			switch (buttonState) {
-				case 0: //both buttons pressed
-					buttonState = 0;
-					break;
-				case 1:
-					if((PINF & 1) == 0) // both pressed now
-						buttonState = 0;
-					else {
-						state = stateTable[1][state];
-						changed = 1;
-						buttonState = 3;
-					}
-					break;
-				case 2:
-					state = stateTable[0][state];
-					changed = 1;
-					buttonState = 2;
-					break;
-				case 3: //both buttons released		
-					break;
 		}
-			buttonState = (PINF & 3);
-	}
 		x_delay(5);
-		*/
 	}
 }
 
